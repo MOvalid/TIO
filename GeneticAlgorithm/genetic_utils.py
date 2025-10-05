@@ -2,7 +2,6 @@ import random
 from typing import List
 from models import Lesson, Slot, Gen, Chromosome
 
-INIT_SCORE = 100
 
 def generate_random_chromosome(groups: List[str], lessons: List[Lesson],
                                rooms: List[str], slots: List[Slot]) -> Chromosome:
@@ -18,28 +17,8 @@ def generate_random_chromosome(groups: List[str], lessons: List[Lesson],
     return chromosome
 
 
-def calculate_fitness(
-    chromosome: Chromosome,
-    init_score: int = 1000,
-    group_conflict_penalty: int = 100,
-    teacher_conflict_penalty: int = 100,
-    room_conflict_penalty: int = 100,
-    gap_penalty: int = 10
-) -> int:
-    score: int = init_score
-    
-    # Conflicts
-    for i, gene1 in enumerate(chromosome):
-        for j, gene2 in enumerate(chromosome):
-            if i >= j:
-                continue
-            if gene1.group == gene2.group and gene1.slot.day == gene2.slot.day and gene1.slot.start_time == gene2.slot.start_time:
-                score -= group_conflict_penalty
-            if gene1.lesson.teacher == gene2.lesson.teacher and gene1.slot.day == gene2.slot.day and gene1.slot.start_time == gene2.slot.start_time:
-                score -= teacher_conflict_penalty
-            if gene1.room == gene2.room and gene1.slot.day == gene2.slot.day and gene1.slot.start_time == gene2.slot.start_time:
-                score -= room_conflict_penalty
-
+def check_group_gaps(chromosome: Chromosome, penalty: int) -> int:
+    score = 0
     for group in set(g.group for g in chromosome):
         group_slots = sorted(
             [g.slot.start_time for g in chromosome if g.group == group],
@@ -49,6 +28,46 @@ def calculate_fitness(
             prev_hour = int(group_slots[k-1][:2])
             curr_hour = int(group_slots[k][:2])
             if curr_hour - prev_hour > 1:
-                score -= gap_penalty
+                score += penalty
+    return score
+
+
+def calculate_fitness(
+    chromosome: Chromosome,
+    init_score: int = 1000,
+    group_conflict_penalty: int = 100,
+    teacher_conflict_penalty: int = 100,
+    room_conflict_penalty: int = 100,
+    gap_penalty: int = 10
+) -> int:
+    score: int = init_score
+
+    for i, g1 in enumerate(chromosome):
+        for j, g2 in enumerate(chromosome):
+            if i >= j:
+                continue
+            score -= check_group_conflict(g1, g2, group_conflict_penalty)
+            score -= check_teacher_conflict(g1, g2, teacher_conflict_penalty)
+            score -= check_room_conflict(g1, g2, room_conflict_penalty)
+
+    score -= check_group_gaps(chromosome, gap_penalty)
 
     return score
+
+
+def check_group_conflict(g1: Gen, g2: Gen, penalty: int) -> int:
+    if g1.group == g2.group and g1.slot.day == g2.slot.day and g1.slot.start_time == g2.slot.start_time:
+        return penalty
+    return 0
+
+
+def check_teacher_conflict(g1: Gen, g2: Gen, penalty: int) -> int:
+    if g1.lesson.teacher == g2.lesson.teacher and g1.slot.day == g2.slot.day and g1.slot.start_time == g2.slot.start_time:
+        return penalty
+    return 0
+
+
+def check_room_conflict(g1: Gen, g2: Gen, penalty: int) -> int:
+    if g1.room == g2.room and g1.slot.day == g2.slot.day and g1.slot.start_time == g2.slot.start_time:
+        return penalty
+    return 0

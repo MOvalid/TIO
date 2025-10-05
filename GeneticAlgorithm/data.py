@@ -1,7 +1,7 @@
 from models import AlgorithmData, Lesson, Slot
 
 
-def prepare_data() -> AlgorithmData:
+def prepare_data_easy() -> AlgorithmData:
     print("Preparing data...")
 
     groups = ["A", "B"]

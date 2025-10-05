@@ -1,9 +1,10 @@
 from models import Chromosome
 import pandas as pd
 import tkinter as tk
+from typing import Dict, Tuple, Any
 
-# Naturalny porządek dni tygodnia
 DAYS_ORDER = {"Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4, "Sat": 5, "Sun": 6}
+
 
 def display_schedule(chromosome: Chromosome, sort: bool = True) -> None:
     if sort:
@@ -23,6 +24,7 @@ def display_schedule(chromosome: Chromosome, sort: bool = True) -> None:
               f"{gene.room:<5} | "
               f"{gene.lesson.name:<20}")
 
+
 def display_schedule_table(chromosome: Chromosome) -> None:
     # Sort days naturalnie
     days = sorted(set(gene.slot.day for gene in chromosome), key=lambda d: DAYS_ORDER.get(d, 7))
@@ -36,28 +38,20 @@ def display_schedule_table(chromosome: Chromosome) -> None:
 
     print(table)
 
+
 def show_schedule_gui(chromosome: Chromosome) -> None:
-    """
-    Displays the chromosome as a timetable in a Tkinter window.
-    Rows = time slots, Columns = days.
-    """
-    # Sort days naturalnie
     days = sorted(set(g.slot.day for g in chromosome), key=lambda d: DAYS_ORDER.get(d, 7))
     hours = sorted(set(g.slot.start_time for g in chromosome))
 
-    # Create main window
     root = tk.Tk()
     root.title("Timetable Schedule")
 
-    # Create header row
     for j, day in enumerate(days):
         tk.Label(root, text=day, borderwidth=1, relief="solid", width=20, bg="lightblue").grid(row=0, column=j+1)
 
-    # Create header column
     for i, hour in enumerate(hours):
         tk.Label(root, text=hour, borderwidth=1, relief="solid", width=10, bg="lightgreen").grid(row=i+1, column=0)
 
-    # Fill table cells
     for i, hour in enumerate(hours):
         for j, day in enumerate(days):
             cell_text = ""
@@ -70,3 +64,20 @@ def show_schedule_gui(chromosome: Chromosome) -> None:
             ).grid(row=i+1, column=j+1, sticky="nsew")
 
     root.mainloop()
+
+
+def print_best_config(best_score: int, best_config: Tuple[Dict[str, Any], Dict[str, Any], float]) -> None:
+    f_params, ga_params, duration = best_config
+
+    print("\n=== BEST OVERALL SOLUTION ===")
+    print(f"Best fitness: {best_score}")
+
+    print("\nBest fitness params:")
+    for k, v in f_params.items():
+        print(f"  {k:<25}: {v}")
+
+    print("\nBest GA params:")
+    for k, v in ga_params.items():
+        print(f"  {k:<25}: {v}")
+
+    print(f"\nExecution time: {duration:.2f} seconds\n")
