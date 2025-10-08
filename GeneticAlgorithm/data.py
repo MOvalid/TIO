@@ -2,8 +2,6 @@ from models import AlgorithmData, Lesson, Slot
 
 
 def prepare_data_easy() -> AlgorithmData:
-    print("Preparing data...")
-
     groups = ["A", "B"]
     lessons = [Lesson("Math", "John"), Lesson("Physics", "Anna")]
     rooms = ["R1", "R2"]
@@ -13,8 +11,6 @@ def prepare_data_easy() -> AlgorithmData:
 
 
 def prepare_data_medium() -> AlgorithmData:
-    print("Preparing data...")
-    
     groups = ["A", "B", "C"]
 
     lessons = [
@@ -39,8 +35,6 @@ def prepare_data_medium() -> AlgorithmData:
 
 
 def prepare_data_hard() -> AlgorithmData:
-    print("Preparing data...")
-
     groups = ["A", "B", "C", "D"]
 
     lessons = [
@@ -70,8 +64,6 @@ def prepare_data_hard() -> AlgorithmData:
 
 
 def prepare_data_hard2() -> AlgorithmData:
-    print("Preparing data...")
-
     groups = ["A", "B", "C", "D", "E"]
 
     lessons = [

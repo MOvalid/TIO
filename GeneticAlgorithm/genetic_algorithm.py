@@ -1,10 +1,12 @@
 import random
 import time
+import numpy as np
 from typing import List, Dict, Tuple, Any
 from csv_utils import export_result_incremental
 from models import Gen, Chromosome, Lesson, Slot
 from genetic_utils import generate_random_chromosome, calculate_fitness
 from genetic_operators import mutate, one_point_crossover
+from utils import plot_fitness_progression
 
 CSV_FILENAME = "grid_search_results.csv"
 
@@ -28,8 +30,9 @@ def genetic_algorithm(
     crossover_rate: float = 0.8,
     mutation_rate: float = 0.1,
     patience: int = 100,
-    fitness_kwargs: dict = {}
-) -> Tuple[Chromosome, int]:
+    fitness_kwargs: dict = {},
+    record_all_generations: bool = False
+) -> Tuple[Chromosome, int, List[int]]:
 
     population: List[Chromosome] = [
         generate_random_chromosome(groups, lessons, rooms, slots)
@@ -38,6 +41,7 @@ def genetic_algorithm(
 
     best_chromosome: Chromosome = population[0]
     best_fitness: int = calculate_fitness(best_chromosome, **fitness_kwargs)
+    fitness_history: List[int] = [best_fitness]
 
     no_improvement: int = 0
 
@@ -60,13 +64,22 @@ def genetic_algorithm(
 
         population = new_population[:population_size]
 
+        current_best_fitness = best_fitness
         improved = False
-        for chromo in population:
-            fitness: int = calculate_fitness(chromo, **fitness_kwargs)
-            if fitness > best_fitness:
-                best_chromosome = chromo
-                best_fitness = fitness
-                improved = True
+
+        # Znajdź najlepszego fitness aktualnej populacji
+        gen_best_chromo = max(population, key=lambda chromo: calculate_fitness(chromo, **fitness_kwargs))
+        gen_best_fitness = calculate_fitness(gen_best_chromo, **fitness_kwargs)
+
+        if gen_best_fitness > best_fitness:
+            best_fitness = gen_best_fitness
+            best_chromosome = gen_best_chromo
+            improved = True
+
+        if record_all_generations:
+            fitness_history.append(gen_best_fitness)  # Zapisuj fitness z każdej iteracji
+        else:
+            fitness_history.append(best_fitness)  # Zapisuj tylko najlepszy fitness
 
         if improved:
             no_improvement = 0
@@ -77,7 +90,7 @@ def genetic_algorithm(
             print(f"Early stopping at generation {gen}, best fitness = {best_fitness}")
             break
 
-    return best_chromosome, best_fitness
+    return best_chromosome, best_fitness, fitness_history
 
 
 def grid_search_ga(
@@ -86,7 +99,8 @@ def grid_search_ga(
     rooms: List[str],
     slots: List[Slot],
     fitness_grid: List[Dict[str, Any]],
-    ga_params_grid: List[Dict[str, Any]]
+    ga_params_grid: List[Dict[str, Any]],
+    record_all_generations: bool = False
 ) -> Tuple[Chromosome, int, Tuple[Dict[str, Any], Dict[str, Any], float], List[Dict[str, Any]]]:
 
     best_solution: Chromosome = []
@@ -94,8 +108,10 @@ def grid_search_ga(
     best_config: Tuple[Dict[str, Any], Dict[str, Any], float] = ({}, {}, 0.0)
     results: List[Dict[str, Any]] = []
 
-    total_runs: int = len(fitness_grid) * len(ga_params_grid)
-    run_counter: int = 1
+    total_runs = len(fitness_grid) * len(ga_params_grid)
+    run_counter = 1
+
+    best_run_history = []
 
     for f_params in fitness_grid:
         for ga_params in ga_params_grid:
@@ -104,15 +120,16 @@ def grid_search_ga(
             print("GA params:", ga_params)
 
             start = time.time()
-            best_chromosome, best_fitness = genetic_algorithm(
+            best_chromosome, best_fitness, fitness_history = genetic_algorithm(
                 groups=groups,
                 lessons=lessons,
                 rooms=rooms,
                 slots=slots,
                 fitness_kwargs=f_params,
+                record_all_generations=record_all_generations,
                 **ga_params
             )
-            duration: float = time.time() - start
+            duration = time.time() - start
 
             print(f"Result fitness: {best_fitness}, time: {duration:.2f}s")
 
@@ -129,7 +146,37 @@ def grid_search_ga(
                 best_score = best_fitness
                 best_solution = best_chromosome
                 best_config = (f_params, ga_params, duration)
+                best_run_history = fitness_history
 
             run_counter += 1
 
+    plot_fitness_progression(best_run_history, "Fitness Progression of the Best Run")
+
     return best_solution, best_score, best_config, results
+
+def repeat_best_config(
+    repeats: int,
+    groups_list,
+    lessons_list,
+    rooms_list,
+    slots_list,
+    best_configuration,
+    genetic_algorithm_func
+) -> np.ndarray:
+    f_params, ga_params, _ = best_configuration
+    best_fitnesses_per_iteration = []
+
+    for i in range(repeats):
+        print(f"\n=== Repeat run {i+1}/{repeats} with best config ===")
+        _, _, fitness_history = genetic_algorithm_func(
+            groups=groups_list,
+            lessons=lessons_list,
+            rooms=rooms_list,
+            slots=slots_list,
+            fitness_kwargs=f_params,
+            record_all_generations=True,
+            **ga_params
+        )
+        best_fitnesses_per_iteration.append(fitness_history)
+
+    return np.array(best_fitnesses_per_iteration, dtype=object)

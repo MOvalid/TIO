@@ -1,7 +1,7 @@
 import random
-from typing import List
+from typing import List, Dict, Tuple
+from collections import defaultdict
 from models import Lesson, Slot, Gen, Chromosome
-
 
 def generate_random_chromosome(groups: List[str], lessons: List[Lesson],
                                rooms: List[str], slots: List[Slot]) -> Chromosome:
@@ -13,23 +13,8 @@ def generate_random_chromosome(groups: List[str], lessons: List[Lesson],
             slot = random.choice(slots)
             gene = Gen(group=group, lesson=lesson, room=room, slot=slot)
             chromosome.append(gene)
-    
+
     return chromosome
-
-
-def check_group_gaps(chromosome: Chromosome, penalty: int) -> int:
-    score = 0
-    for group in set(g.group for g in chromosome):
-        group_slots = sorted(
-            [g.slot.start_time for g in chromosome if g.group == group],
-            key=lambda x: x
-        )
-        for k in range(1, len(group_slots)):
-            prev_hour = int(group_slots[k-1][:2])
-            curr_hour = int(group_slots[k][:2])
-            if curr_hour - prev_hour > 1:
-                score += penalty
-    return score
 
 
 def calculate_fitness(
@@ -38,36 +23,80 @@ def calculate_fitness(
     group_conflict_penalty: int = 100,
     teacher_conflict_penalty: int = 100,
     room_conflict_penalty: int = 100,
-    gap_penalty: int = 10
+    group_gap_penalty_short: int = 20,
+    group_gap_penalty_long: int = 40,
+    teacher_gap_penalty_short: int = 5,
+    teacher_gap_penalty_long: int = 10
 ) -> int:
-    score: int = init_score
+    score = init_score
 
-    for i, g1 in enumerate(chromosome):
-        for j, g2 in enumerate(chromosome):
-            if i >= j:
-                continue
-            score -= check_group_conflict(g1, g2, group_conflict_penalty)
-            score -= check_teacher_conflict(g1, g2, teacher_conflict_penalty)
-            score -= check_room_conflict(g1, g2, room_conflict_penalty)
+    day_time_map: Dict[Tuple[str, str], List[Gen]] = defaultdict(list)
+    for gene in chromosome:
+        key = (gene.slot.day, gene.slot.start_time)
+        day_time_map[key].append(gene)
 
-    score -= check_group_gaps(chromosome, gap_penalty)
+    for key, genes in day_time_map.items():
+        groups_seen = set()
+        teachers_seen = set()
+        rooms_seen = set()
+        for gene in genes:
+            if gene.group in groups_seen:
+                score -= group_conflict_penalty
+            else:
+                groups_seen.add(gene.group)
+
+            if gene.lesson.teacher in teachers_seen:
+                score -= teacher_conflict_penalty
+            else:
+                teachers_seen.add(gene.lesson.teacher)
+
+            if gene.room in rooms_seen:
+                score -= room_conflict_penalty
+            else:
+                rooms_seen.add(gene.room)
+
+    score -= check_group_gaps(chromosome, group_gap_penalty_short, group_gap_penalty_long)
+    score -= check_teacher_gaps(chromosome, teacher_gap_penalty_short, teacher_gap_penalty_long)
 
     return score
 
 
-def check_group_conflict(g1: Gen, g2: Gen, penalty: int) -> int:
-    if g1.group == g2.group and g1.slot.day == g2.slot.day and g1.slot.start_time == g2.slot.start_time:
-        return penalty
-    return 0
+def check_teacher_gaps(chromosome: Chromosome, penalty_short: int, penalty_long: int) -> int:
+    score = 0
+    teacher_day_slots: Dict[Tuple[str, str], List[str]] = defaultdict(list)
+    for gene in chromosome:
+        teacher_day_slots[(gene.lesson.teacher, gene.slot.day)].append(gene.slot.start_time)
+
+    for (teacher, day), slots in teacher_day_slots.items():
+        sorted_slots = sorted(slots)
+        for i in range(1, len(sorted_slots)):
+            prev_hour = int(sorted_slots[i-1][:2])
+            curr_hour = int(sorted_slots[i][:2])
+            gap = curr_hour - prev_hour - 1
+            if gap == 1:
+                score += penalty_short
+            elif gap > 1:
+                score += penalty_long * gap
+
+    return score
 
 
-def check_teacher_conflict(g1: Gen, g2: Gen, penalty: int) -> int:
-    if g1.lesson.teacher == g2.lesson.teacher and g1.slot.day == g2.slot.day and g1.slot.start_time == g2.slot.start_time:
-        return penalty
-    return 0
+def check_group_gaps(chromosome: Chromosome, penalty_short: int, penalty_long: int) -> int:
+    score = 0
+    group_day_slots: Dict[Tuple[str, str], List[str]] = defaultdict(list)
+    for gene in chromosome:
+        group_day_slots[(gene.group, gene.slot.day)].append(gene.slot.start_time)
 
+    for (group, day), slots in group_day_slots.items():
+        sorted_slots = sorted(slots)
+        for i in range(1, len(sorted_slots)):
+            prev_hour = int(sorted_slots[i-1][:2])
+            curr_hour = int(sorted_slots[i][:2])
+            gap = curr_hour - prev_hour - 1
 
-def check_room_conflict(g1: Gen, g2: Gen, penalty: int) -> int:
-    if g1.room == g2.room and g1.slot.day == g2.slot.day and g1.slot.start_time == g2.slot.start_time:
-        return penalty
-    return 0
+            if gap == 1:
+                score += penalty_short
+            elif gap > 1:
+                score += penalty_long * gap
+
+    return score
