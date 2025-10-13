@@ -1,6 +1,6 @@
 import random
 from typing import List, Tuple
-from models import Gen, Chromosome, Lesson, Slot
+from models import Gen, Chromosome, Slot
 
 def mutate(
     chromosome: Chromosome,

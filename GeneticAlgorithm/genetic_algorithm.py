@@ -29,7 +29,7 @@ def genetic_algorithm(
     generations: int = 100,
     crossover_rate: float = 0.8,
     mutation_rate: float = 0.1,
-    patience: int = 100,
+    patience: int = None,
     fitness_kwargs: dict = {},
     record_all_generations: bool = False
 ) -> Tuple[Chromosome, int, List[int]]:
@@ -57,8 +57,8 @@ def genetic_algorithm(
             else:
                 child1, child2 = parent1[:], parent2[:]
 
-            child1 = mutate(child1, rooms, slots, mutation_rate)
-            child2 = mutate(child2, rooms, slots, mutation_rate)
+            child1 = mutate(child1, rooms, slots, mutation_rate, mutation_rate)
+            child2 = mutate(child2, rooms, slots, mutation_rate, mutation_rate)
 
             new_population.extend([child1, child2])
 
@@ -67,7 +67,6 @@ def genetic_algorithm(
         current_best_fitness = best_fitness
         improved = False
 
-        # Znajdź najlepszego fitness aktualnej populacji
         gen_best_chromo = max(population, key=lambda chromo: calculate_fitness(chromo, **fitness_kwargs))
         gen_best_fitness = calculate_fitness(gen_best_chromo, **fitness_kwargs)
 
@@ -77,16 +76,16 @@ def genetic_algorithm(
             improved = True
 
         if record_all_generations:
-            fitness_history.append(gen_best_fitness)  # Zapisuj fitness z każdej iteracji
+            fitness_history.append(gen_best_fitness)
         else:
-            fitness_history.append(best_fitness)  # Zapisuj tylko najlepszy fitness
+            fitness_history.append(best_fitness)
 
         if improved:
             no_improvement = 0
         else:
             no_improvement += 1
 
-        if no_improvement >= patience:
+        if patience is not None and best_fitness != float('-inf') and no_improvement >= patience:
             print(f"Early stopping at generation {gen}, best fitness = {best_fitness}")
             break
 

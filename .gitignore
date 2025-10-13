@@ -208,3 +208,4 @@ __marimo__/
 
 # output of the Python script
 *.csv
+diagrams/

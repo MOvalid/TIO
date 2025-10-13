@@ -37,3 +37,17 @@ def export_result_incremental(result: Dict[str, Any], filename: str) -> None:
         row_data = {**result["fitness_params"], **result["ga_params"],
                     "fitness": result["fitness"], "time": round(result["time"], 2)}
         writer.writerow(row_data)
+
+
+def save_results_to_csv(results: List[Dict], filename: str = "./results.csv") -> None:
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    if not results:
+        print("Brak wyników do zapisania")
+        return
+    keys = results[0].keys()
+    with open(filename, mode='w', newline='', encoding='utf-8') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=list(keys))
+        writer.writeheader()
+        for row in results:
+            writer.writerow(row)
+    print(f"Wyniki zapisano do pliku CSV: {filename}")
