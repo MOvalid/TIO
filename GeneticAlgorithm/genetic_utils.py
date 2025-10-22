@@ -1,6 +1,6 @@
 from math import inf
 import random
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Set, Optional
 from collections import defaultdict
 from models import Lesson, Slot, Gen, Chromosome
 from collections import defaultdict
@@ -144,3 +144,107 @@ def check_group_gaps(chromosome: Chromosome, penalty_short: int, penalty_long: i
                 score += penalty_long * gap
 
     return score
+
+def generate_valid_chromosome(
+    groups: List[str],
+    lessons: List[Lesson],
+    rooms: List[str],
+    slots: List[Slot],
+    max_attempts: int = 1000
+) -> Optional[Chromosome]:
+    chromosome: Chromosome = []
+    
+    # Track used slots for each entity
+    group_slots: Dict[str, Set[Tuple[str, str]]] = defaultdict(set)    # group -> (day, time)
+    teacher_slots: Dict[str, Set[Tuple[str, str]]] = defaultdict(set)  # teacher -> (day, time)
+    room_slots: Dict[str, Set[Tuple[str, str]]] = defaultdict(set)     # room -> (day, time)
+    
+    for group in groups:
+        for lesson in lessons:
+            # Try to find valid slot and room
+            placed = False
+            attempts = 0
+            
+            while not placed and attempts < max_attempts:
+                attempts += 1
+                
+                # Choose random slot and room
+                slot = random.choice(slots)
+                room = random.choice(rooms)
+                time_key = (slot.day, slot.start_time)
+                
+                # Check if slot is available for group, teacher and room
+                if (time_key not in group_slots[group] and 
+                    time_key not in teacher_slots[lesson.teacher] and 
+                    time_key not in room_slots[room]):
+                    
+                    # Create and add new gene
+                    gene = Gen(group=group, lesson=lesson, room=room, slot=slot)
+                    chromosome.append(gene)
+                    
+                    # Mark slot as used
+                    group_slots[group].add(time_key)
+                    teacher_slots[lesson.teacher].add(time_key)
+                    room_slots[room].add(time_key)
+                    
+                    placed = True
+            
+            if not placed:
+                # Could not place lesson after max attempts
+                return None
+    
+    return chromosome
+
+def is_valid_chromosome(chromosome: Chromosome) -> bool:
+    day_time_map: Dict[Tuple[str, str], List[Gen]] = defaultdict(list)
+    
+    for gene in chromosome:
+        key = (gene.slot.day, gene.slot.start_time)
+        day_time_map[key].append(gene)
+    
+    for genes in day_time_map.values():
+        groups_seen = set()
+        teachers_seen = set()
+        rooms_seen = set()
+        
+        for gene in genes:
+            if (gene.group in groups_seen or
+                gene.lesson.teacher in teachers_seen or
+                gene.room in rooms_seen):
+                return False
+            
+            groups_seen.add(gene.group)
+            teachers_seen.add(gene.lesson.teacher)
+            rooms_seen.add(gene.room)
+    
+    return True
+
+def compare_chromosomes(chromosome1, chromosome2, name1="Original", name2="Modified"):
+    """
+    Compares two chromosomes and prints detailed differences
+    """
+    print(f"\nComparing {name1} vs {name2}:")
+    print("-" * 50)
+    
+    differences = 0
+    for idx, (gene1, gene2) in enumerate(zip(chromosome1, chromosome2)):
+        if gene1 != gene2:
+            differences += 1
+            print(f"\nGene {idx} differs:")
+            print(f"{name1}: {gene1}")
+            print(f"{name2}: {gene2}")
+            
+            # Detail what exactly is different
+            if gene1.group != gene2.group:
+                print(f"Different group: {gene1.group} -> {gene2.group}")
+            if gene1.lesson != gene2.lesson:
+                print(f"Different lesson: {gene1.lesson.name} -> {gene2.lesson.name}")
+            if gene1.room != gene2.room:
+                print(f"Different room: {gene1.room} -> {gene2.room}")
+            if gene1.slot != gene2.slot:
+                print(f"Different slot: {gene1.slot.day} {gene1.slot.start_time} -> {gene2.slot.day} {gene2.slot.start_time}")
+    
+    percentage = (differences/len(chromosome1))*100
+    print("\nSummary:")
+    print(f"Total differences: {differences}/{len(chromosome1)} genes ({percentage:.2f}%)")
+    print("-" * 50)

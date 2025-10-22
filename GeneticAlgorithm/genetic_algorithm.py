@@ -1,7 +1,7 @@
 import random
 import time
 import numpy as np
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict, Tuple, Any, Callable
 from csv_utils import export_result_incremental
 from models import Gen, Chromosome, Lesson, Slot
 from genetic_utils import generate_random_chromosome, calculate_fitness
@@ -9,6 +9,10 @@ from genetic_operators import mutate, one_point_crossover
 from utils import plot_fitness_progression
 
 CSV_FILENAME = "grid_search_results.csv"
+
+# Add type alias for selection functions
+SelectionFunction = Callable[[List[Chromosome], dict], Chromosome]
+
 
 def tournament_selection(
     population: List[Chromosome],
@@ -18,6 +22,67 @@ def tournament_selection(
     selected: List[Chromosome] = random.sample(population, k)
     selected.sort(key=lambda chromo: calculate_fitness(chromo, **fitness_kwargs), reverse=True)
     return selected[0]
+
+
+def roulette_wheel_selection(
+    population: List[Chromosome],
+    fitness_kwargs: dict = {}
+) -> Chromosome:
+    fitness_values = [calculate_fitness(chromo, **fitness_kwargs) for chromo in population]
+
+    min_fitness = min(fitness_values)
+    if min_fitness < 0:
+        fitness_values = [f - min_fitness + 1 for f in fitness_values]
+
+    total_fitness = sum(fitness_values)
+    if total_fitness == 0:
+        return random.choice(population)
+
+    pick = random.uniform(0, total_fitness)
+    current = 0
+
+    for chromosome, fitness in zip(population, fitness_values):
+        current += fitness
+        if current > pick:
+            return chromosome
+
+    return population[-1]
+
+
+def rank_selection(
+    population: List[Chromosome],
+    fitness_kwargs: dict = {}
+) -> Chromosome:
+    sorted_population = sorted(
+        population,
+        key=lambda chromo: calculate_fitness(chromo, **fitness_kwargs)
+    )
+
+    ranks = list(range(1, len(population) + 1))
+    total_rank = sum(ranks)
+
+    pick = random.uniform(0, total_rank)
+    current = 0
+
+    for chromosome, rank in zip(sorted_population, ranks):
+        current += rank
+        if current > pick:
+            return chromosome
+
+    return sorted_population[-1]
+
+
+def elitist_selection(
+    population: List[Chromosome],
+    elite_size: int = 2,
+    fitness_kwargs: dict = {}
+) -> List[Chromosome]:
+    sorted_population = sorted(
+        population,
+        key=lambda chromo: calculate_fitness(chromo, **fitness_kwargs),
+        reverse=True
+    )
+    return sorted_population[:elite_size]
 
 
 def genetic_algorithm(
@@ -31,7 +96,9 @@ def genetic_algorithm(
     mutation_rate: float = 0.1,
     patience: int = None,
     fitness_kwargs: dict = {},
-    record_all_generations: bool = False
+    record_all_generations: bool = False,
+    selection_function: SelectionFunction = tournament_selection,
+    elite_size: int = 0
 ) -> Tuple[Chromosome, int, List[int]]:
 
     population: List[Chromosome] = [
@@ -46,11 +113,14 @@ def genetic_algorithm(
     no_improvement: int = 0
 
     for gen in range(generations):
+        # Apply elitism if enabled
         new_population: List[Chromosome] = []
+        if elite_size > 0:
+            new_population.extend(elitist_selection(population, elite_size, fitness_kwargs))
 
         while len(new_population) < population_size:
-            parent1: Chromosome = tournament_selection(population, fitness_kwargs=fitness_kwargs)
-            parent2: Chromosome = tournament_selection(population, fitness_kwargs=fitness_kwargs)
+            parent1: Chromosome = selection_function(population, fitness_kwargs=fitness_kwargs)
+            parent2: Chromosome = selection_function(population, fitness_kwargs=fitness_kwargs)
 
             if random.random() < crossover_rate:
                 child1, child2 = one_point_crossover(parent1, parent2)
