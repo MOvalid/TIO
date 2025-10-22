@@ -17,7 +17,6 @@ def generate_random_chromosome(groups: List[str], lessons: List[Lesson],
             chromosome.append(gene)
 
     return chromosome
-from collections import defaultdict
 
 def calculate_concentration_bonus(chromosome: Chromosome, max_bonus: int = 100) -> int:
     bonus = 0

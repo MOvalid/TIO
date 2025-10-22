@@ -1,6 +1,6 @@
 import itertools
 from csv_utils import save_results_to_csv
-from data import prepare_data_medium
+from data import prepare_data_hard, prepare_data_medium
 from genetic_algorithm import genetic_algorithm
 from genetic_utils import generate_random_chromosome
 from utils import plot_fitness_split_by_crossover_and_pop_gen
@@ -14,7 +14,7 @@ if __name__ == "__main__":
     initial_chromosome = generate_random_chromosome(groups_list, lessons_list, rooms_list, slots_list)
 
     default_fitness_params = {
-        "init_score": 1000,
+        "init_score": 0,
         "group_conflict_penalty": inf,
         "teacher_conflict_penalty": inf,
         "room_conflict_penalty": inf,
@@ -41,10 +41,10 @@ if __name__ == "__main__":
         #     [None]
         # )
         for population_size, num_generations, crossover_prob, mutation_prob, patience_value in itertools.product(
-            [100, 125],
+            [125, 150, 175, 200],
             [1000],
-            [0.8, 0.9],
-            [0.1],
+            [0.6, 0.7, 0.8, 0.9],
+            [0.05, 0.1, 0.15],
             [None]
         )
     ]

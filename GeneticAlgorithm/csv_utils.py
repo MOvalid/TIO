@@ -45,7 +45,7 @@ def save_results_to_csv(results: List[Dict], filename: str = "./results.csv") ->
         print("Brak wyników do zapisania")
         return
     keys = results[0].keys()
-    with open(filename, mode='w', newline='', encoding='utf-8') as csvfile:
+    with open(filename, mode='a', newline='', encoding='utf-8') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=list(keys))
         writer.writeheader()
         for row in results:
