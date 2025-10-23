@@ -1,8 +1,16 @@
 import random
+import logging
 from typing import Dict, List, Tuple
 from genetic_utils import is_valid_chromosome
 from models import Gen, Chromosome, Slot
 from collections import defaultdict
+
+logging.basicConfig(
+    level=logging.ERROR,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 def mutate(
     chromosome: Chromosome,
@@ -39,7 +47,7 @@ def mutate(
             
         attempts += 1
     
-    print(f"Warning: Could not find valid mutation after {max_attempts} attempts")
+    logger.warning(f"Could not find valid mutation after {max_attempts} attempts")
     return original_chromosome
 
 
@@ -48,7 +56,7 @@ def one_point_crossover(parent1: Chromosome, parent2: Chromosome) -> Tuple[Chrom
         raise ValueError("Parents must be of the same length for crossover.")
 
     point: int = random.randint(1, len(parent1) - 1)
-    print(f"Crossover point: {point}")
+    logger.debug(f"Crossover point: {point}")
     
     child1: Chromosome = parent1[:point] + parent2[point:]
     child2: Chromosome = parent2[:point] + parent1[point:]
@@ -62,9 +70,9 @@ def two_point_crossover(parent1: Chromosome, parent2: Chromosome) -> Tuple[Chrom
 
     length = len(parent1)
     point1 = random.randint(1, length - 2)
-    print(f"Crossover point 1: {point1}")
     point2 = random.randint(point1 + 1, length - 1)
-    print(f"Crossover point 2: {point2}")
+    logger.debug(f"Crossover point 1: {point1}")
+    logger.debug(f"Crossover point 2: {point2}")
     
     child1: Chromosome = parent1[:point1] + parent2[point1:point2] + parent1[point2:]
     child2: Chromosome = parent2[:point1] + parent1[point1:point2] + parent2[point2:]
@@ -189,7 +197,7 @@ def swap_mutation(
             
         attempts += 1
     
-    print(f"Warning: Could not find valid mutation after {max_attempts} attempts")
+    logger.warning(f"Could not find valid mutation after {max_attempts} attempts")
     return original_chromosome
 
 
@@ -238,5 +246,5 @@ def group_reverse_mutation(
             
         attempts += 1
     
-    print(f"Warning: Could not find valid mutation after {max_attempts} attempts")
+    logger.warning(f"Could not find valid mutation after {max_attempts} attempts")
     return original_chromosome
