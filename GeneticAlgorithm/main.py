@@ -6,7 +6,13 @@ import numpy as np
 from datetime import datetime
 from csv_utils import save_results_to_csv
 from data import prepare_data_medium
-from genetic_algorithm import genetic_algorithm, tournament_selection
+from genetic_algorithm import (
+    genetic_algorithm,
+    tournament_selection,
+    roulette_wheel_selection,
+    rank_selection,
+    elitist_selection
+)
 from genetic_utils import generate_random_chromosome
 from genetic_operators import (
     one_point_crossover,
@@ -28,21 +34,17 @@ def plot_comparison_with_std(histories_list, labels, title, filename_prefix):
     plt.figure(figsize=(12, 8))
     
     for label, histories in zip(labels, histories_list):
-        # Convert list of histories to numpy array and handle any NaN/inf values
         histories_array = np.array(histories)
         histories_array = np.nan_to_num(histories_array, nan=0.0, posinf=0.0, neginf=0.0)
         
-        # Calculate mean and std dev with nan handling
         mean_fitness = np.nanmean(histories_array, axis=0)
         std_fitness = np.nanstd(histories_array, axis=0)
         
-        # Replace any remaining NaN or inf values
         mean_fitness = np.nan_to_num(mean_fitness, nan=0.0, posinf=0.0, neginf=0.0)
         std_fitness = np.nan_to_num(std_fitness, nan=0.0, posinf=0.0, neginf=0.0)
         
-        # Plot mean line
         plt.plot(mean_fitness, label=label)
-        # Plot standard deviation area
+
         plt.fill_between(
             range(len(mean_fitness)),
             mean_fitness - std_fitness,
@@ -56,10 +58,8 @@ def plot_comparison_with_std(histories_list, labels, title, filename_prefix):
     plt.legend()
     plt.grid(True)
     
-    # Ensure diagrams directory exists
     ensure_directory_exists('./diagrams')
     
-    # Save in diagrams directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"./diagrams/{filename_prefix}_{timestamp}.png"
     plt.savefig(filename)
@@ -97,6 +97,7 @@ if __name__ == "__main__":
 
     # Test 1: Compare crossover operators with different rates
     crossover_rates = [0.7, 0.8, 0.9, 0.95]
+    mutation_rates = [0.05, 0.1, 0.15]
     crossover_comparison = {
         "one_point": one_point_crossover,
         "two_point": two_point_crossover,
@@ -105,27 +106,28 @@ if __name__ == "__main__":
 
     crossover_histories = {}
     for crossover_name, crossover_func in crossover_comparison.items():
-        for rate in crossover_rates:
-            variant_name = f"{crossover_name}_{rate}"
-            crossover_histories[variant_name] = []
-            print(f"\nTesting crossover operator: {crossover_name} with rate: {rate}")
-            
-            for run in range(RUNS):
-                print(f"Run {run + 1}/{RUNS}")
-                _, _, history = genetic_algorithm(
-                    groups=groups_list,
-                    lessons=lessons_list,
-                    rooms=rooms_list,
-                    slots=slots_list,
-                    population_size=100,
-                    generations=250,
-                    crossover_rate=rate,
-                    mutation_rate=0.1,
-                    fitness_kwargs=default_fitness_params,
-                    record_all_generations=True,
-                    selection_function=tournament_selection
-                )
-                crossover_histories[variant_name].append(history)
+        for mutation_rate in mutation_rates:
+            for crossover_rate in crossover_rates:
+                variant_name = f"{crossover_name}_{mutation_rate}_crossover_{crossover_rate}"
+                crossover_histories[variant_name] = []
+                print(f"\nTesting crossover operator: {crossover_name} with mutation rate: {mutation_rate} and crossover rate: {crossover_rate}")
+                
+                for run in range(RUNS):
+                    print(f"Run {run + 1}/{RUNS}")
+                    _, _, history = genetic_algorithm(
+                        groups=groups_list,
+                        lessons=lessons_list,
+                        rooms=rooms_list,
+                        slots=slots_list,
+                        population_size=100,
+                        generations=250,
+                        crossover_rate=crossover_rate,
+                        mutation_rate=mutation_rate,
+                        fitness_kwargs=default_fitness_params,
+                        record_all_generations=True,
+                        selection_function=tournament_selection
+                    )
+                    crossover_histories[variant_name].append(history)
 
     crossover_table = create_comparison_table(crossover_histories, RUNS)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -141,7 +143,6 @@ if __name__ == "__main__":
     )
 
     # Test 2: Compare mutation operators with different rates
-    mutation_rates = [0.05, 0.1, 0.15]
     mutation_comparison = {
         "standard": lambda c, rate: mutate(c, rooms_list, slots_list, room_mutation_rate=rate, slot_mutation_rate=rate, validate=True),
         "swap": lambda c, rate: swap_mutation(c, mutation_rate=rate, validate=True),
@@ -150,27 +151,28 @@ if __name__ == "__main__":
 
     mutation_histories = {}
     for mutation_name, mutation_func in mutation_comparison.items():
-        for rate in mutation_rates:
-            variant_name = f"{mutation_name}_{rate}"
-            mutation_histories[variant_name] = []
-            print(f"\nTesting mutation operator: {mutation_name} with rate: {rate}")
-            
-            for run in range(RUNS):
-                print(f"Run {run + 1}/{RUNS}")
-                _, _, history = genetic_algorithm(
-                    groups=groups_list,
-                    lessons=lessons_list,
-                    rooms=rooms_list,
-                    slots=slots_list,
-                    population_size=100,
-                    generations=250,
-                    crossover_rate=0.9,
-                    mutation_rate=rate,
-                    fitness_kwargs=default_fitness_params,
-                    record_all_generations=True,
-                    selection_function=tournament_selection
-                )
-                mutation_histories[variant_name].append(history)
+        for mutation_rate in mutation_rates:
+            for crossover_rate in crossover_rates:
+                variant_name = f"{mutation_name}_{mutation_rate}_crossover_{crossover_rate}"
+                mutation_histories[variant_name] = []
+                print(f"\nTesting mutation operator: {mutation_name} with mutation rate: {mutation_rate} and crossover rate: {crossover_rate}")
+                
+                for run in range(RUNS):
+                    print(f"Run {run + 1}/{RUNS}")
+                    _, _, history = genetic_algorithm(
+                        groups=groups_list,
+                        lessons=lessons_list,
+                        rooms=rooms_list,
+                        slots=slots_list,
+                        population_size=100,
+                        generations=250,
+                        crossover_rate=crossover_rate,
+                        mutation_rate=mutation_rate,
+                        fitness_kwargs=default_fitness_params,
+                        record_all_generations=True,
+                        selection_function=tournament_selection
+                    )
+                    mutation_histories[variant_name].append(history)
 
     mutation_table = create_comparison_table(mutation_histories, RUNS)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -183,4 +185,62 @@ if __name__ == "__main__":
         list(mutation_histories.keys()),
         "Comparison of Mutation Operators and Rates (with std dev)",
         "pop100_gen200_mutation_rates_comparison_std"
+    )
+
+    # Test 3: Compare selection methods (aggregate over all mutation/crossover rate combinations)
+    selection_methods = {
+        "tournament": tournament_selection,
+        "roulette": roulette_wheel_selection,
+        "rank": rank_selection,
+        "elitist": elitist_selection
+    }
+    
+    selection_histories = {name: [] for name in selection_methods.keys()}
+    
+    for selection_name, selection_func in selection_methods.items():
+        print(f"\nTesting selection method: {selection_name}")
+        for mutation_rate in mutation_rates:
+            for crossover_rate in crossover_rates:
+                combo_desc = f"{selection_name}_{mutation_rate}_crossover_{crossover_rate}"
+                print(f"  Combination: mutation_rate={mutation_rate}, crossover_rate={crossover_rate}")
+                for run in range(RUNS):
+                    print(f"    Run {run + 1}/{RUNS}")
+                    _, _, history = genetic_algorithm(
+                        groups=groups_list,
+                        lessons=lessons_list,
+                        rooms=rooms_list,
+                        slots=slots_list,
+                        population_size=100,
+                        generations=250,
+                        crossover_rate=crossover_rate,
+                        mutation_rate=mutation_rate,
+                        fitness_kwargs=default_fitness_params,
+                        record_all_generations=True,
+                        selection_function=selection_func
+                    )
+                    selection_histories[selection_name].append(history)
+    
+    selection_stats = []
+    for name, histories in selection_histories.items():
+        final_fitnesses = [h[-1] for h in histories] if histories else []
+        selection_stats.append({
+            "Selection": name,
+            "Mean Fitness": np.mean(final_fitnesses) if final_fitnesses else np.nan,
+            "Std Dev": np.std(final_fitnesses) if final_fitnesses else np.nan,
+            "Max Fitness": np.max(final_fitnesses) if final_fitnesses else np.nan,
+            "Min Fitness": np.min(final_fitnesses) if final_fitnesses else np.nan,
+            "Runs (total)": len(final_fitnesses)
+        })
+    
+    selection_table = pd.DataFrame(selection_stats)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    selection_table.to_csv(f'selection_comparison_{timestamp}.csv', index=False)
+    print("\nSelection Comparison Results:")
+    print(selection_table)
+    
+    plot_comparison_with_std(
+        list(selection_histories.values()),
+        list(selection_histories.keys()),
+        "Comparison of Selection Methods (aggregated over rates)",
+        "pop100_gen250_selection_methods_std"
     )

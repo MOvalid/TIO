@@ -10,9 +10,7 @@ from utils import plot_fitness_progression
 
 CSV_FILENAME = "grid_search_results.csv"
 
-# Add type alias for selection functions
 SelectionFunction = Callable[[List[Chromosome], dict], Chromosome]
-
 
 def tournament_selection(
     population: List[Chromosome],
