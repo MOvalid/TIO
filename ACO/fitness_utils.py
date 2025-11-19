@@ -44,7 +44,7 @@ def calculate_concentration_bonus(chromosome: Chromosome, max_bonus: int = 300) 
 
 def calculate_fitness(
     chromosome: Chromosome,
-    init_score: int = 1000,
+    init_score: int = 0,
 
     # group_conflict_penalty: int = 300,
     # teacher_conflict_penalty: int = 200,
