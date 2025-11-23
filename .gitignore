@@ -209,3 +209,7 @@ __marimo__/
 # output of the Python script
 *.csv
 diagrams/
+
+# output/results folders
+results/
+**/results/
