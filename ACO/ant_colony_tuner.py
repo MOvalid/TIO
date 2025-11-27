@@ -24,7 +24,8 @@ def run_aco(groups: List[str], lessons: List[Lesson], rooms: List[str], slots: L
         n_iterations=n_iterations,
         evaporation_rate=evaporation_rate,
         alpha=alpha,
-        beta=beta
+        beta=beta,
+        local_evaporation_rate=evaporation_rate
     )
     return aco.run()
 

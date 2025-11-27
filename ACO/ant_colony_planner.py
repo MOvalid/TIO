@@ -35,8 +35,9 @@ class AntColonyPlanner:
         n_iterations: int = 50, 
         evaporation_rate: float = 0.1,
         alpha = 1.0,
-        beta = 2.0
-    ):
+        beta = 2.0,
+        local_evaporation_rate: float | None = None
+     ):
         """
         Initializes the Ant Colony Planner with a custom fitness function.
         
@@ -60,6 +61,7 @@ class AntColonyPlanner:
         self.n_ants = n_ants
         self.n_iterations = n_iterations
         self.evaporation_rate = evaporation_rate
+        self.local_evaporation_rate = local_evaporation_rate
         self.alpha = alpha
         self.beta = beta
         self.min_pheromone = 0.00001
@@ -92,6 +94,10 @@ class AntColonyPlanner:
                     weights.append(weight)
 
                 chosen_room, chosen_slot = random.choices(choices, weights=weights, k=1)[0]
+                if self.local_evaporation_rate is not None:
+                    key = (lesson.name, chosen_room, chosen_slot.day, chosen_slot.start_time)
+                    self.pheromones[key] = (1 - self.local_evaporation_rate) * self.pheromones[key] + self.local_evaporation_rate * self.min_pheromone
+
                 chromosome.append(Gen(group=group, lesson=lesson, room=chosen_room, slot=chosen_slot))
 
         return chromosome
