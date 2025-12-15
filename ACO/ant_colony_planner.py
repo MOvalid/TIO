@@ -1,5 +1,6 @@
 import random
 from typing import List, Callable, Dict, Any
+from heuristic_function import heuristic_value
 from models import Chromosome, Gen, Lesson, Slot
 
 class AntColonyPlanner:
@@ -88,7 +89,13 @@ class AntColonyPlanner:
                     key = (lesson.name, room, slot.day, slot.start_time)
                     pheromone = max(self.pheromones[key], self.min_pheromone)
 
-                    heuristic = 1.0 / (1 + len([g for g in chromosome if g.slot == slot]))
+                    heuristic = heuristic_value(
+                        lesson=lesson,
+                        group=group,
+                        room=room,
+                        slot=slot,
+                        current_solution=chromosome
+                    )
 
                     weight = (pheromone ** self.alpha) * (heuristic ** self.beta)
                     weights.append(weight)

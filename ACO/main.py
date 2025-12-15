@@ -10,7 +10,7 @@ def main():
     n_iterations_options = [100, 200, 300]
     evaporation_options = [0.05, 0.075, 0.1, 0.15, 0.2]
     alpha_options = [1.0]
-    # alpha_options = [0.5, 1.0, 2.0]
+    # alpha_options = [1.0, 2.0, 5.0]
     beta_options = [2.0]
     # beta_options = [1.0, 2.0, 5.0]
 
