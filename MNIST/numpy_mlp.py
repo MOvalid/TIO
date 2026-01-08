@@ -57,7 +57,7 @@ class NumpyMLP(BaseModel):
         self.num_classes = num_classes
         self.learning_rate = learning_rate
         self.dropout_rate = dropout_rate
-
+        self.rng = np.random.default_rng()
         self.weights, self.biases = self._init_weights()
         self.activation, self.activation_derivative = self._resolve_activation()
         self.loss_fn = self._resolve_loss()
@@ -73,10 +73,10 @@ class NumpyMLP(BaseModel):
         """
         layer_sizes = [self.input_shape[0]] + self.hidden_units + [self.num_classes]
         weights, biases = [], []
-        np.random.seed(42)
 
         for i in range(len(layer_sizes) - 1):
-            w = np.random.randn(layer_sizes[i], layer_sizes[i + 1]) * np.sqrt(2 / layer_sizes[i])
+            w = self.rng.standard_normal((layer_sizes[i], layer_sizes[i + 1])) * np.sqrt(2 / layer_sizes[i])
+            # w = np.random.randn(layer_sizes[i], layer_sizes[i + 1]) * np.sqrt(2 / layer_sizes[i])
             b = np.zeros((1, layer_sizes[i + 1]))
             weights.append(w)
             biases.append(b)
@@ -169,7 +169,8 @@ class NumpyMLP(BaseModel):
             a = self.activation(z)
 
             if training and self.dropout_rate > 0:
-                mask = (np.random.rand(*a.shape) >= self.dropout_rate).astype(float)
+                # mask = (np.random.rand(*a.shape) >= self.dropout_rate).astype(float)
+                mask = (self.rng.random(a.shape) >= self.dropout_rate).astype(float)
                 a *= mask
                 a /= (1.0 - self.dropout_rate)
 
@@ -263,7 +264,8 @@ class NumpyMLP(BaseModel):
         """
         Train the model for a single epoch using mini-batches.
         """
-        perm = np.random.permutation(X.shape[0])
+        # perm = np.random.permutation(X.shape[0])
+        perm = self.rng.permutation(X.shape[0])
         X_shuf, Y_shuf = X[perm], Y[perm]
 
         for i in range(0, X_shuf.shape[0], batch_size):

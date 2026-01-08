@@ -2,7 +2,7 @@
 
 ---
 
-## 1. Konstruktor `__init__`
+## 1. Konstruktor `__init__`o
 
 ```python
 def __init__(self,
@@ -32,12 +32,12 @@ def __init__(self,
 * **Cel:** inicjalizacja sieci, konfiguracja metryk, funkcji aktywacji i straty
 * **Parametry:**
 
-  * `input_shape` – liczba cech wejściowych (np. 784 dla MNIST)
-  * `hidden_units` – lista liczby neuronów w warstwach ukrytych
+  * `input_shape` – liczba cech wejściowych (np. 784 dla MNIST - 28 x 28)
+  * `hidden_units` – lista liczby neuronów w poszczególnych warstwach ukrytych
   * `activation` – funkcja aktywacji w warstwach ukrytych (ReLU/Tanh/Sigmoid)
-  * `dropout_rate` – dropout dla regularizacji
-  * `num_classes` – liczba klas wyjściowych
-  * `learning_rate` – krok uczenia
+  * `dropout_rate` – współczynnik dropoutu dla regularizacji
+  * `num_classes` – liczba klas wyjściowych (np. 10 dla MNIST - cyfry od 0 do 9)
+  * `learning_rate` – współczynnik kroku uczenia
   * `loss` – funkcja straty (`categorical_crossentropy` lub `mse`)
   * `metrics` – lista metryk do monitorowania (`accuracy`, `precision`, `recall`, `TopKCategoricalAccuracy`)
 
@@ -60,7 +60,7 @@ def _init_weights(self):
     return weights, biases
 ```
 
-* **He initialization** dla ReLU (`np.sqrt(2 / n_in)`)
+* **Inicjalizacja Kaiminga He** dla ReLU (`np.sqrt(2 / n_in)`)
 * Biasy inicjalizowane zerami
 * Zwraca listy wag i biasów dla wszystkich warstw
 
@@ -81,7 +81,7 @@ def _softmax(self, x):
 ```
 
 * `_relu(x)` – aktywacja ReLU
-* `_relu_derivative(x)` – pochodna ReLU (do backprop)
+* `_relu_derivative(x)` – pochodna ReLU (do propagacji wstecznej)
 * `_softmax(x)` – konwersja wyjść na prawdopodobieństwa klas
 
 ---
@@ -89,9 +89,9 @@ def _softmax(self, x):
 ## 4. Propagacja w przód `_forward`
 
 * Oblicza **kombinacje liniowe `z`** i **aktywacje `a`** każdej warstwy
-* `zs` – lista wszystkich wartości `z` (potrzebna w backprop)
+* `zs` – lista wszystkich wartości `z` (potrzebna do propagacji wstecznej)
 * `activations` – lista aktywacji od wejścia do wyjścia
-* Dropout opcjonalnie podczas treningu
+* Opcjonalny dropout podczas treningu
 * Ostatnia warstwa: `a_out = softmax(z_out)`
 
 ---
@@ -143,21 +143,110 @@ def _compute_metrics(self, Y_true, Y_pred):
 
 ## 7. Trening `fit`
 
-* Mini-batch SGD z permutacją danych
-* Forward + backward dla każdej partii
-* Obliczenie metryk dla treningu i walidacji
-* Obsługa callbacków (`on_epoch_end`, `stop_training`)
-* Zwraca `History`:
+Funkcja `fit` odpowiada za **trening modelu MLP** w trybie mini-batch.
 
-```python
-history = History(history_dict)
-```
+Główne etapy działania:
+
+1. **Inicjalizacja historii uczenia**
+
+   ```python
+   history = self._initialize_history(validation_data)
+   ```
+
+   * Tworzy pustą strukturę do przechowywania **straty** i wszystkich metryk (`accuracy`, `precision`, `recall`, itp.)
+   * Jeśli jest podany zbiór walidacyjny, tworzy też miejsca na `val_loss` i `val_<metric>`
+<br>
+2. **Wywołanie callbacków przed treningiem**
+
+   ```python
+   for cb in callbacks:
+       cb.on_train_begin()
+   ```
+
+   * Każdy callback może np. zainicjalizować wewnętrzne stany lub zapisywać logi przed rozpoczęciem epok
+<br>
+3. **Pętla po epokach**
+
+   ```python
+   for epoch in range(epochs):
+       self._train_single_epoch(X_train, Y_train, batch_size)
+   ```
+
+   * Każda epoka dzieli dane na **mini-batche** i wykonuje **propagację w przód i w tył** dla każdej partii
+   * Mini-batch SGD:
+
+     * Dane są losowo permutowane (`shuffle`) na początku epoki
+     * Batch size określa liczbę próbek na aktualizację wag
+     * Daje kompromis między pełnym gradientem (wolnym) a pojedynczymi próbkami (niestabilnym)
+<br>
+4. **Obliczenie strat i metryk po epoce**
+
+   ```python
+   train_loss, train_metrics = self._evaluate_dataset(X_train, Y_train)
+   self._log_results(history, train_loss, train_metrics)
+   ```
+
+   * Oblicza **loss** na całym zbiorze treningowym
+   * Oblicza wszystkie zdefiniowane metryki w `self.metrics`
+   * Zapisuje je do historii
+<br>
+5. **Walidacja (opcjonalnie)**
+
+   ```python
+   if validation_data:
+       val_loss, val_metrics = self._evaluate_dataset(X_val, Y_val)
+       self._log_results(history, val_loss, val_metrics, prefix='val_')
+   ```
+
+   * Jeśli podano zbiór walidacyjny, model sprawdza swoje działanie na danych niewidocznych w treningu
+   * Pozwala monitorować nadmierne dopasowanie (overfitting)
+<br>
+6. **Wywołanie callbacków po epoce i sprawdzenie warunków zatrzymania**
+
+   ```python
+   if self._run_callbacks(callbacks, epoch, logs):
+       break
+   ```
+
+   * Callbacki mogą:
+
+     * Zapisywać najlepszy model
+     * Wczesne zatrzymanie (`EarlyStopping`) jeśli metryka nie poprawia się przez określoną liczbę epok
+   * `stop_training` przerywa trening, jeśli spełniony warunek w callbacku
+<br>
+7. **Wypisywanie podsumowania epoki**
+
+   ```python
+   if verbose:
+       self._print_epoch_summary(epoch, epochs, logs)
+   ```
+
+   * Pokazuje na konsoli loss i metryki dla treningu i walidacji
+<br>
+8. **Zakończenie treningu i callbacki końcowe**
+
+   ```python
+   for cb in callbacks:
+       cb.on_train_end()
+   ```
+
+   * Pozwala callbackom wykonać finalne operacje
+<br>
+9. **Zwrócenie historii uczenia**
+
+   ```python
+   return History(history)
+   ```
+
+   * Zawiera kompletną historię strat i metryk po każdej epoce
+   * Umożliwia późniejszą analizę i wizualizację krzywych uczenia
+
 
 ---
 
 ## 8. Predykcja `predict`
 
-* Forward pass
+* Propagacja w przód
 * Zwraca prawdopodobieństwa dla każdej klasy:
 
 ```python
@@ -169,7 +258,7 @@ def predict(self, X):
 
 ## 9. Ewaluacja `evaluate`
 
-* Oblicza stratę i wszystkie metryki skonfigurowane w `self.metrics`:
+* Oblicza stratę i wszystkie metryki podane w `self.metrics`:
 
 ```python
 def evaluate(self, X, Y):

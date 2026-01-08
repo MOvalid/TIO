@@ -2,7 +2,7 @@
 
 ---
 
-## 1. Konstruktor `__init__`
+## 1. Konstruktor `__init__`o
 
 ```python
 def __init__(self,
@@ -32,11 +32,11 @@ def __init__(self,
 
   * `input_shape` – liczba cech wejściowych
   * `hidden_units` – lista liczby neuronów w ukrytych warstwach
-  * `activation` – funkcja aktywacji (`relu`, `tanh`, etc.)
+  * `activation` – funkcja aktywacji (`relu`, `tanh`, itd.)
   * `dropout_rate` – dropout po każdej warstwie ukrytej
   * `num_classes` – liczba klas wyjściowych
   * `loss` – funkcja straty (`categorical_crossentropy` lub `mse`)
-  * `optimizer` – optymalizator Keras (`adam`, `sgd`, etc.)
+  * `optimizer` – optymalizator Keras (`adam`, `sgd`, itd.)
   * `metrics` – lista metryk (`accuracy`, `precision`, `recall`, `TopKCategoricalAccuracy`)
 
 ---
@@ -67,14 +67,14 @@ def _build_model(self):
         elif m.lower() == 'recall':
             keras_metrics.append(tf.keras.metrics.Recall())
         elif m.lower() == 'topkcategoricalaccuracy':
-            keras_metrics.append(tf.keras.metrics.TopKCategoricalAccuracy(k=10))
+            keras_metrics.append(tf.keras.metrics.TopKCategoricalAccuracy(k=5))
 
     self._model.compile(optimizer='adam', loss=self.loss, metrics=keras_metrics)
 ```
 
 * Sequential: warstwy gęste (`Dense`) + opcjonalny dropout
 * Ostatnia warstwa: `softmax` dla klasyfikacji wieloklasowej
-* Metryki Keras: `accuracy`, `Precision()`, `Recall()`, `TopKCategoricalAccuracy(k=10)`
+* Metryki Keras: `accuracy`, `precision`, `recall`, `TopKCategoricalAccuracy(k=5)`
 * Kompilacja modelu (`optimizer`, `loss`, `metrics`)
 
 ---
@@ -95,7 +95,7 @@ def _resolve_optimizer(self):
 ```
 
 * Zamienia string na obiekt Keras Optimizer
-* Obsługuje `adam`, `sgd`, lub dowolny inny via `tf.keras.optimizers.get()`
+* Obsługuje `adam`, `sgd`, lub dowolny inny z biblioteki `tf.keras.optimizers`
 
 ---
 
@@ -115,7 +115,7 @@ def fit(self, X_train, Y_train, validation_data=None, epochs=15, batch_size=128,
     return History(history_obj.history)
 ```
 
-* Wrapper dla `model.fit()` Keras
+* Wrapper dla `model.fit()` z biblioteki Keras
 * Obsługa walidacji (`validation_data`)
 * Obsługa callbacków Keras (np. EarlyStopping)
 * Zwraca własny obiekt `History` kompatybilny z BaseModel
@@ -130,7 +130,7 @@ def predict(self, X):
 ```
 
 * Zwraca prawdopodobieństwa klas dla każdego przykładu
-* Kształt wyniku: `(n_samples, num_classes)`
+* Strktura wyniku: `(n_samples, num_classes)`
 
 ---
 
@@ -164,16 +164,7 @@ def evaluate(self, X, Y):
 * Oblicza stratę (loss) za pomocą `model.evaluate()`
 * Dodatkowo liczy:
 
-  * Accuracy
-  * Precision (ważone)
-  * Recall (ważone)
+  * accuracy
+  * precision (ważone)
+  * recall (ważone)
   * Top-K accuracy (`k=5`)
-
----
-
-## 7. Kluczowe różnice względem NumpyMLP
-
-* KerasMLP używa **backendu TensorFlow/Keras** – wszystkie operacje wektorowe są przyspieszone GPU/CPU
-* Obsługuje **callbacki Keras** (np. EarlyStopping)
-* Automatyczne liczenie gradientów i propagacja wstecz (`backprop`) w Keras
-* Metryki dodatkowo obliczane ręcznie w `evaluate`, aby były zgodne z BaseModel i mogły uwzględniać np. ważone metryki tj. precyzja czy recall
